@@ -47,6 +47,9 @@ These are the functions in the Module, they may change, but it will be noted her
     countMail()
         returns the number of unread msgs from inbox
 
+    setPrefs({ Signature => "Sig", MaxPer => 25 });
+        sets some preferences
+
 DEPENDENCIES
 
 This module requires these other modules and libraries:

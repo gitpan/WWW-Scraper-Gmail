@@ -1,5 +1,6 @@
 Changes
 Makefile.PL
+set1.pl
 MANIFEST
 README
 t/WWW-Scraper-Gmail.t

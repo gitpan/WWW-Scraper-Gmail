@@ -11,6 +11,7 @@ require Crypt::SSLeay;
 use LWP::UserAgent;
 use Env qw{HOME};
 use Carp;
+use Data::Dumper;
 
 our @ISA = qw(Exporter);
 
@@ -31,21 +32,25 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 
 # Preloaded methods go here.
 
-my ($url, $url2, $url3, $ua, $req, $res);
+my ($url, $url2, $url3, $url_init, $urlx, $ua, $req, $res);
 my ($cookie, $dump, $inbox, $head);
+my ($gmail_at);
 my $num = 0;
 my ($username, $password);
+my $logged_in = 0;
 my $pid = "$ENV{HOME}/.gmailpid";
 my $gmailrc = "$ENV{HOME}/.gmailrc";
 
 $url = "https://www.google.com/accounts/ServiceLoginBoxAuth";
 $url2 = "https://www.google.com/accounts/CheckCookie?service=mail&chtml=LoginDoneHtml";
+#$urlx = "http://gmail.google.com/gmail?search=inbox&view=tl&start=0&init=1&zx=$zx";
 $url3 = "http://gmail.google.com/gmail?search=inbox&view=tl&start=0";
+$url_init = "http://gmail.google.com/gmail?search=inbox&view=tl&start=0&init=1";
 
 sub getUP {
     open(GMAILRC, "$gmailrc") or die("Can't Open $gmailrc \nFormat:\n[gmail]\nusername=<username>\npassword=<password>\n");
@@ -70,6 +75,8 @@ sub login {
             last();
         }
         $cookie = <GMAILPID>;
+        #$zx = <GMAILPID>;
+        #print "cookie = $cookie\ngmail_at = $gmail_at\nzx=$zx\n";
         $head = HTTP::Headers->new(Cookie => $cookie);
         close(GMAILPID);
         return(0);
@@ -91,15 +98,8 @@ sub login {
     if ($res->is_success()) {
         #try and get the cookie value
         $res->content() =~ /cookieVal=[ ]?\"(.*)\";/;
-        $cookie .= " GV=$1";
+        $cookie .= " GV=$1;";
         #print "Got cookie - $1\n";
-    }
-
-    if (open(GMAILPID, "> $pid")) {
-        #Save the cookie to a file so that we don't have to go through it all each time
-        print GMAILPID time(), "\n";
-        print GMAILPID $cookie, "\n";
-        close(GMAILPID);
     }
 
     #print "setting Cookie => $cookie\n";
@@ -107,6 +107,38 @@ sub login {
     $req = HTTP::Request->new(GET => $url2, $head);
     $res = $ua->request($req);
 
+
+    if (open(GMAILPID, "> $pid")) {
+        #Save the cookie to a file so that we don't have to go through it all each time
+        print GMAILPID time(), "\n";
+        print GMAILPID $cookie, "\n";
+        #print GMAILPID $zx, "\n";
+        close(GMAILPID);
+    }
+
+    $logged_in = 1;
+
+}
+
+sub doGmailAt {
+    #must be logged in to do the gmail at..
+    login() unless $logged_in;
+
+    $req = HTTP::Request->new(GET => $url_init,  $head);
+    $res = $ua->request($req);
+    $dump = $res->as_string();
+
+    #more cookies
+    #$zx = $1 if ($dump =~ m!ver=([A-Za-z0-9]*)!);
+    while ($dump =~ m!^Set-Cookie: (GMAIL([^;]*)).*!mgs) {
+        $cookie .= $1 . ";";
+        if ($1 =~ /GMAIL_AT=(.*)/) {
+            $gmail_at = $1;
+        }
+    }
+
+    $head = HTTP::Headers->new(Cookie => $cookie);
+    #print "cookie = $cookie\ngmail_at = $gmail_at\nzx=$zx\n";
 }
 
 sub countMail {
@@ -209,6 +241,22 @@ sub fetchMail {
         warn $res->status_line, "\n";
         return(0);
     }
+}
+
+sub setPrefs {
+    my ($arg) = @_;
+    login();
+    doGmailAt();
+    $arg->{"MaxPer"} = 100 unless defined $arg->{MaxPer};
+    $arg->{"Signature"} = "" unless defined $arg->{Signature};
+
+    #print Dumper $arg;
+
+    my $url_pref=" http://gmail.google.com/gmail?search=inbox&view=tl&start=0&act=prefs&at=$gmail_at&p_bx_hs=1&p_ix_nt=$arg->{MaxPer}&p_bx_sc=1&p_sx_sg=$arg->{Signature}"; #&zx=$zx";
+    #$head = HTTP::Headers->new(Cookie => $cookie); #, Referer => $ref);
+    $req = HTTP::Request->new(GET=>$url_pref, $head);
+    $res = $ua->request($req);
+    return ($res->as_string() =~ /saved/);
 }
 
 1;
