@@ -1,0 +1,13 @@
+Revision history for Perl extension WWW::Scraper::Gmail.
+
+0.01  Fri Jun 25 11:40:07 2004
+	- original version; created by h2xs 1.23 with options
+		-AX -n WWW::Scraper::Gmail
+    - Just connects to gmail over https then reads a sekret url for inbox information
+        parses it out, and prints it.
+
+0.02  Tue, 29 Jun 2004 11:27:52 -0400
+    - Added countMail() function to get a number of msgs in inbox
+
+0.03  Tue, 29 Jun 2004 11:27:52 -0400
+    - Put cookie info in a "pid" file so that it can forego the login stuff each time
