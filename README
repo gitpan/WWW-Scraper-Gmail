@@ -55,8 +55,9 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   LWP
-  Crypt::SSLeay
+  Crypt::SSLeay (or any SSL thingie for LWP)
   ENV
+  HTML::Entities
 
 COPYRIGHT AND LICENCE
 
